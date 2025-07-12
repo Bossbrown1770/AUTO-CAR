@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>Admin</h1>
+    </header>
+    <main>
+        <h2>Welcome, Admin!</h2>
+        <section id="add-car">
+            <h3>Add New Car</h3>
+            <form id="add-car-form">
+                <label for="make">Make:</label>
+                <input type="text" id="make" name="make" required>
+                <label for="model">Model:</label>
+                <input type="text" id="model" name="model" required>
+                <label for="year">Year:</label>
+                <input type="number" id="year" name="year" required>
+                <label for="price">Price:</label>
+                <input type="number" id="price" name="price" required>
+                <label for="image">Image URL:</label>
+                <input type="text" id="image" name="image" required>
+                <button type="submit">Add Car</button>
+            </form>
+        </section>
+        <section id="inventory">
+            <h3>Inventory</h3>
+            <div id="inventory-list"></div>
+        </section>
+        <section id="payments">
+            <h3>Payments</h3>
+            <div id="payment-list"></div>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2024 Car Dealership</p>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
