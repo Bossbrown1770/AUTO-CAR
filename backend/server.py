@@ -119,6 +119,19 @@ class ContactMessage(BaseModel):
     message: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+class CarInquiry(BaseModel):
+    inquiry_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    car_id: str
+    customer_name: str
+    customer_email: str
+    customer_phone: str
+    customer_address: str
+    message: Optional[str] = None
+    financing_needed: bool = False
+    preferred_contact_method: str = "email"  # email, phone, telegram
+    inquiry_status: str = "new"  # new, contacted, interested, closed
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
 # Auth Functions
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
