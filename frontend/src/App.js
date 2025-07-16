@@ -930,12 +930,14 @@ const AdminPage = () => {
   const [dashboardData, setDashboardData] = useState({});
   const [cars, setCars] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDashboardData();
     fetchCars();
     fetchOrders();
+    fetchInquiries();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -971,8 +973,42 @@ const AdminPage = () => {
       setOrders(data);
     } catch (error) {
       console.error('Error fetching orders:', error);
+    }
+  };
+
+  const fetchInquiries = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/admin/inquiries`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setInquiries(data);
+    } catch (error) {
+      console.error('Error fetching inquiries:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateInquiryStatus = async (inquiryId, newStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('status', newStatus);
+      
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/admin/inquiries/${inquiryId}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      
+      if (response.ok) {
+        // Refresh inquiries
+        fetchInquiries();
+      }
+    } catch (error) {
+      console.error('Error updating inquiry status:', error);
     }
   };
 
@@ -988,6 +1024,12 @@ const AdminPage = () => {
           onClick={() => setActiveTab('dashboard')}
         >
           Dashboard
+        </button>
+        <button 
+          className={activeTab === 'inquiries' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('inquiries')}
+        >
+          Car Inquiries
         </button>
         <button 
           className={activeTab === 'cars' ? 'tab active' : 'tab'}
@@ -1018,16 +1060,58 @@ const AdminPage = () => {
             <p>{dashboardData.sold_cars || 0}</p>
           </div>
           <div className="stat-card">
-            <h3>Total Users</h3>
-            <p>{dashboardData.total_users || 0}</p>
+            <h3>Total Inquiries</h3>
+            <p>{inquiries.length}</p>
           </div>
           <div className="stat-card">
-            <h3>Total Orders</h3>
-            <p>{dashboardData.total_orders || 0}</p>
+            <h3>New Inquiries</h3>
+            <p>{inquiries.filter(i => i.inquiry_status === 'new').length}</p>
           </div>
           <div className="stat-card">
             <h3>Total Revenue</h3>
             <p>${(dashboardData.total_revenue || 0).toLocaleString()}</p>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'inquiries' && (
+        <div className="inquiries-management">
+          <h2>Car Inquiries</h2>
+          <div className="inquiries-list">
+            {inquiries.map(inquiry => (
+              <div key={inquiry.inquiry_id} className="inquiry-item">
+                <div className="inquiry-header">
+                  <h3>{inquiry.car_details?.make} {inquiry.car_details?.model} ({inquiry.car_details?.year})</h3>
+                  <span className={`status-badge ${inquiry.inquiry_status}`}>
+                    {inquiry.inquiry_status}
+                  </span>
+                </div>
+                <div className="inquiry-details">
+                  <p><strong>Customer:</strong> {inquiry.customer_name}</p>
+                  <p><strong>Email:</strong> {inquiry.customer_email}</p>
+                  <p><strong>Phone:</strong> {inquiry.customer_phone}</p>
+                  <p><strong>Address:</strong> {inquiry.customer_address}</p>
+                  <p><strong>Price:</strong> ${inquiry.car_details?.price.toLocaleString()}</p>
+                  <p><strong>Financing:</strong> {inquiry.financing_needed ? 'Yes' : 'No'}</p>
+                  <p><strong>Contact Method:</strong> {inquiry.preferred_contact_method}</p>
+                  {inquiry.message && (
+                    <p><strong>Message:</strong> {inquiry.message}</p>
+                  )}
+                  <p><strong>Date:</strong> {new Date(inquiry.created_at).toLocaleDateString()}</p>
+                </div>
+                <div className="inquiry-actions">
+                  <select 
+                    value={inquiry.inquiry_status} 
+                    onChange={(e) => updateInquiryStatus(inquiry.inquiry_id, e.target.value)}
+                  >
+                    <option value="new">New</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="interested">Interested</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
