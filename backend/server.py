@@ -40,6 +40,7 @@ users_collection = db.users
 orders_collection = db.orders
 payment_transactions_collection = db.payment_transactions
 admin_collection = db.admin
+car_inquiries_collection = db.car_inquiries
 
 # JWT Secret
 JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-here")
