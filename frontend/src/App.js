@@ -315,63 +315,56 @@ const InventoryPage = ({ setCurrentPage }) => {
 
 const CarDetailsModal = ({ car, onClose, setCurrentPage }) => {
   const { user } = useAuth();
-  const [showPurchaseForm, setShowPurchaseForm] = useState(false);
-  const [purchaseForm, setPurchaseForm] = useState({
+  const [showInquiryForm, setShowInquiryForm] = useState(false);
+  const [inquiryForm, setInquiryForm] = useState({
     customer_name: '',
     customer_email: '',
     customer_phone: '',
     customer_address: '',
+    message: '',
     financing_needed: false,
-    payment_method: 'credit_card'
+    preferred_contact_method: 'email'
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState('');
 
-  const handlePurchaseSubmit = async (e) => {
+  const handleInquirySubmit = async (e) => {
     e.preventDefault();
-    
-    if (!user) {
-      alert('Please login to purchase a car');
-      setCurrentPage('login');
-      return;
-    }
-
-    // Create order
-    const orderData = {
-      ...purchaseForm,
-      car_id: car.car_id
-    };
+    setIsSubmitting(true);
+    setSubmitMessage('');
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orders`, {
+      const formData = new FormData();
+      Object.keys(inquiryForm).forEach(key => {
+        formData.append(key, inquiryForm[key]);
+      });
+
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cars/${car.car_id}/inquiry`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(orderData)
+        body: formData
       });
 
       if (response.ok) {
-        // Redirect to payment
-        const formData = new FormData();
-        formData.append('car_id', car.car_id);
-
-        const paymentResponse = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/payments/checkout`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
+        const data = await response.json();
+        setSubmitMessage(data.message);
+        setInquiryForm({
+          customer_name: '',
+          customer_email: '',
+          customer_phone: '',
+          customer_address: '',
+          message: '',
+          financing_needed: false,
+          preferred_contact_method: 'email'
         });
-
-        if (paymentResponse.ok) {
-          const paymentData = await paymentResponse.json();
-          window.location.href = paymentData.url;
-        }
+        setShowInquiryForm(false);
+      } else {
+        setSubmitMessage('Error submitting inquiry. Please try again.');
       }
     } catch (error) {
-      console.error('Error processing purchase:', error);
-      alert('Error processing purchase. Please try again.');
+      console.error('Error submitting inquiry:', error);
+      setSubmitMessage('Error submitting inquiry. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -455,68 +448,86 @@ const CarDetailsModal = ({ car, onClose, setCurrentPage }) => {
           </div>
         )}
 
-        <div className="purchase-section">
-          {!showPurchaseForm ? (
-            <button 
-              className="btn-primary purchase-btn"
-              onClick={() => setShowPurchaseForm(true)}
-            >
-              Purchase This Car
-            </button>
+        <div className="inquiry-section">
+          {submitMessage && (
+            <div className={`submit-message ${submitMessage.includes('Error') ? 'error' : 'success'}`}>
+              {submitMessage}
+            </div>
+          )}
+          
+          {!showInquiryForm ? (
+            <div className="inquiry-info">
+              <h3>Interested in this car?</h3>
+              <p>Submit your information below and we'll contact you with payment options and to arrange a viewing.</p>
+              <button 
+                className="btn-primary inquiry-btn"
+                onClick={() => setShowInquiryForm(true)}
+              >
+                I'm Interested - Get Payment Info
+              </button>
+            </div>
           ) : (
-            <form onSubmit={handlePurchaseSubmit} className="purchase-form">
-              <h3>Purchase Information</h3>
+            <form onSubmit={handleInquirySubmit} className="inquiry-form">
+              <h3>Contact Information</h3>
+              <p>We'll contact you with payment information and arrange a viewing.</p>
               
               <div className="form-group">
-                <label>Full Name</label>
+                <label>Full Name *</label>
                 <input
                   type="text"
-                  value={purchaseForm.customer_name}
-                  onChange={(e) => setPurchaseForm({...purchaseForm, customer_name: e.target.value})}
+                  value={inquiryForm.customer_name}
+                  onChange={(e) => setInquiryForm({...inquiryForm, customer_name: e.target.value})}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label>Email</label>
+                <label>Email *</label>
                 <input
                   type="email"
-                  value={purchaseForm.customer_email}
-                  onChange={(e) => setPurchaseForm({...purchaseForm, customer_email: e.target.value})}
+                  value={inquiryForm.customer_email}
+                  onChange={(e) => setInquiryForm({...inquiryForm, customer_email: e.target.value})}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label>Phone</label>
+                <label>Phone *</label>
                 <input
                   type="tel"
-                  value={purchaseForm.customer_phone}
-                  onChange={(e) => setPurchaseForm({...purchaseForm, customer_phone: e.target.value})}
+                  value={inquiryForm.customer_phone}
+                  onChange={(e) => setInquiryForm({...inquiryForm, customer_phone: e.target.value})}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label>Address</label>
+                <label>Address *</label>
                 <textarea
-                  value={purchaseForm.customer_address}
-                  onChange={(e) => setPurchaseForm({...purchaseForm, customer_address: e.target.value})}
+                  value={inquiryForm.customer_address}
+                  onChange={(e) => setInquiryForm({...inquiryForm, customer_address: e.target.value})}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label>Payment Method</label>
+                <label>Message (Optional)</label>
+                <textarea
+                  value={inquiryForm.message}
+                  onChange={(e) => setInquiryForm({...inquiryForm, message: e.target.value})}
+                  placeholder="Any questions or special requests?"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Preferred Contact Method</label>
                 <select
-                  value={purchaseForm.payment_method}
-                  onChange={(e) => setPurchaseForm({...purchaseForm, payment_method: e.target.value})}
+                  value={inquiryForm.preferred_contact_method}
+                  onChange={(e) => setInquiryForm({...inquiryForm, preferred_contact_method: e.target.value})}
                 >
-                  <option value="credit_card">Credit Card</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="paypal">PayPal</option>
-                  <option value="apple_pay">Apple Pay</option>
-                  <option value="google_pay">Google Pay</option>
+                  <option value="email">Email</option>
+                  <option value="phone">Phone</option>
+                  <option value="telegram">Telegram</option>
                 </select>
               </div>
 
@@ -524,19 +535,19 @@ const CarDetailsModal = ({ car, onClose, setCurrentPage }) => {
                 <label>
                   <input
                     type="checkbox"
-                    checked={purchaseForm.financing_needed}
-                    onChange={(e) => setPurchaseForm({...purchaseForm, financing_needed: e.target.checked})}
+                    checked={inquiryForm.financing_needed}
+                    onChange={(e) => setInquiryForm({...inquiryForm, financing_needed: e.target.checked})}
                   />
                   I need financing assistance
                 </label>
               </div>
 
               <div className="form-buttons">
-                <button type="button" onClick={() => setShowPurchaseForm(false)} className="btn-secondary">
+                <button type="button" onClick={() => setShowInquiryForm(false)} className="btn-secondary">
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
-                  Proceed to Payment
+                <button type="submit" disabled={isSubmitting} className="btn-primary">
+                  {isSubmitting ? 'Submitting...' : 'Submit Inquiry'}
                 </button>
               </div>
             </form>
