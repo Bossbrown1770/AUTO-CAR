@@ -314,7 +314,110 @@ async def get_all_orders(admin: dict = Depends(get_admin_user)):
         order.pop("_id", None)
     return orders
 
-# Payment Endpoints
+# Car Inquiry Endpoints
+@app.post("/api/cars/{car_id}/inquiry")
+async def submit_car_inquiry(
+    car_id: str,
+    customer_name: str = Form(...),
+    customer_email: str = Form(...),
+    customer_phone: str = Form(...),
+    customer_address: str = Form(...),
+    message: str = Form(None),
+    financing_needed: bool = Form(False),
+    preferred_contact_method: str = Form("email")
+):
+    # Get car details
+    car = cars_collection.find_one({"car_id": car_id})
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+    
+    # Create inquiry
+    inquiry = CarInquiry(
+        car_id=car_id,
+        customer_name=customer_name,
+        customer_email=customer_email,
+        customer_phone=customer_phone,
+        customer_address=customer_address,
+        message=message,
+        financing_needed=financing_needed,
+        preferred_contact_method=preferred_contact_method
+    )
+    
+    # Save inquiry to database
+    result = car_inquiries_collection.insert_one(inquiry.dict())
+    
+    if result.inserted_id:
+        # Send Telegram notification to dealer
+        notification_message = f"""
+🚗 *New Car Inquiry!*
+
+*Car Details:*
+• {car['make']} {car['model']} ({car['year']})
+• Price: ${car['price']:,.2f}
+• Mileage: {car['mileage']:,} miles
+
+*Customer Information:*
+• Name: {customer_name}
+• Email: {customer_email}
+• Phone: {customer_phone}
+• Address: {customer_address}
+
+*Inquiry Details:*
+• Financing Needed: {'Yes' if financing_needed else 'No'}
+• Preferred Contact: {preferred_contact_method}
+• Message: {message or 'None'}
+
+*Next Steps:*
+Contact the customer with your payment information and arrange viewing/purchase.
+
+*Your Contact Info:*
+📱 +1 470-499-8139
+💬 https://t.me/carsforsaleunder3000
+
+_Inquiry received at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC_
+        """
+        
+        await send_telegram_notification(notification_message)
+        
+        return {
+            "message": "Your inquiry has been submitted successfully! We'll contact you soon with payment information.",
+            "inquiry_id": inquiry.inquiry_id
+        }
+    
+    raise HTTPException(status_code=500, detail="Failed to submit inquiry")
+
+@app.get("/api/admin/inquiries")
+async def get_all_inquiries(admin: dict = Depends(get_admin_user)):
+    """Get all car inquiries for admin"""
+    inquiries = list(car_inquiries_collection.find())
+    for inquiry in inquiries:
+        inquiry.pop("_id", None)
+        # Add car details to inquiry
+        car = cars_collection.find_one({"car_id": inquiry["car_id"]})
+        if car:
+            inquiry["car_details"] = {
+                "make": car["make"],
+                "model": car["model"],
+                "year": car["year"],
+                "price": car["price"]
+            }
+    return inquiries
+
+@app.put("/api/admin/inquiries/{inquiry_id}")
+async def update_inquiry_status(
+    inquiry_id: str,
+    status: str = Form(...),
+    admin: dict = Depends(get_admin_user)
+):
+    """Update inquiry status"""
+    result = car_inquiries_collection.update_one(
+        {"inquiry_id": inquiry_id},
+        {"$set": {"inquiry_status": status}}
+    )
+    
+    if result.modified_count:
+        return {"message": "Inquiry status updated successfully"}
+    raise HTTPException(status_code=404, detail="Inquiry not found")
 @app.post("/api/payments/checkout")
 async def create_checkout_session(
     car_id: str = Form(...),
